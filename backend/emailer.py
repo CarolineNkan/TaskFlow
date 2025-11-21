@@ -1,27 +1,33 @@
 import smtplib
 import os
 from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def send_email(to_email, subject, body_html):
-    host = os.getenv("MAIL_HOST")
-    port = int(os.getenv("MAIL_PORT"))
-    username = os.getenv("MAIL_USERNAME")
-    password = os.getenv("MAIL_PASSWORD")
-    from_email = os.getenv("MAIL_FROM")
+MAIL_HOST = os.getenv("MAIL_HOST")
+MAIL_PORT = int(os.getenv("MAIL_PORT"))
+MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+MAIL_FROM = os.getenv("MAIL_FROM")
 
-    msg = MIMEMultipart("alternative")
-    msg["From"] = from_email
-    msg["To"] = to_email
+
+def send_email(to_address, subject, body):
+    """
+    Send an email using Mailtrap SMTP (safe for development)
+    """
+
+    msg = MIMEText(body)
     msg["Subject"] = subject
+    msg["From"] = MAIL_FROM
+    msg["To"] = to_address
 
-    msg.attach(MIMEText(body_html, "html"))
+    try:
+        with smtplib.SMTP(MAIL_HOST, MAIL_PORT) as server:
+            server.login(MAIL_USERNAME, MAIL_PASSWORD)
+            server.sendmail(MAIL_FROM, [to_address], msg.as_string())
 
-    with smtplib.SMTP(host, port) as server:
-        server.login(username, password)
-        server.sendmail(from_email, to_email, msg.as_string())
+        print("Email sent successfully through Mailtrap!")
 
-    print("Email sent successfully!")
+    except Exception as e:
+        print("Failed to send email:", e)

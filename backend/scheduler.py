@@ -1,50 +1,55 @@
-# backend/scheduler.py
-
 import datetime
 
+CURRENT_YEAR = datetime.datetime.now().year
 
-def build_schedule(tasks, availability, hours_per_day):
+def normalize_date(date_str):
+    """Ensure all dates use the current year."""
+    try:
+        dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+        return dt.replace(year=CURRENT_YEAR)
+    except:
+        return None
+
+
+def generate_schedule(tasks):
     """
-    tasks: list[dict] from DB or extractor
-    availability: { "Mon": True, "Tue": True, ... }
-    hours_per_day: int (user preference)
+    Generate a simple weekly schedule.
+    tasks = [
+        { "id": 1, "task": "Assignment 1", "due_date": "2025-02-10", "estimated_duration": 2 }
+    ]
     """
 
-    # Convert to datetime objects
+    # Convert and normalize dates
     for t in tasks:
-        try:
-            t["due_date"] = datetime.datetime.strptime(t["due_date"], "%Y-%m-%d")
-        except:
-            t["due_date"] = None
+        t["due_date"] = normalize_date(t["due_date"])
 
-    # Sort tasks by due date (soonest first)
+    # Sort tasks by due_date
     tasks = sorted(tasks, key=lambda x: x["due_date"] or datetime.datetime.max)
 
-    # Build schedule object
-    schedule = {day: [] for day in availability.keys()}
+    # Basic weekly structure
+    weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    schedule = {day: [] for day in weekdays}
 
-    # Distribute hours
+    # Assign 1hr blocks (simple MVP logic)
     task_index = 0
+    HOURS_PER_DAY = 3  # MVP default
 
-    for day, is_available in availability.items():
-        if not is_available:
-            continue
+    for day in weekdays:
+        remaining = HOURS_PER_DAY
 
-        remaining_hours = hours_per_day
-
-        while remaining_hours > 0 and task_index < len(tasks):
+        while remaining > 0 and task_index < len(tasks):
             task = tasks[task_index]
 
             block = {
-                "task": task.get("title", "Untitled"),
-                "due_date": task.get("due_date").strftime("%Y-%m-%d")
-                    if task.get("due_date") else "unknown",
-                "allocated": 1  # 1 hour block
+                "id": task["id"],
+                "task": task["task"],
+                "due_date": task["due_date"].strftime("%Y-%m-%d") if task["due_date"] else "unknown",
+                "hours": 1
             }
 
             schedule[day].append(block)
 
-            remaining_hours -= 1
+            remaining -= 1
             task_index += 1
 
     return schedule

@@ -1,51 +1,135 @@
-<h2>Generate My Week</h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate My Week</title>
+    <link rel="stylesheet" href="styles.css">
 
-<button id="genWeekBtn">Generate Weekly Schedule</button>
+    <style>
+        .glow {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            background: #ff7b7b;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #ff7b7b;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
 
-<div id="output"></div>
+        .glow:hover {
+            box-shadow: 0 0 20px #ff4f4f;
+        }
+
+        .day-block {
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+
+<body>
+<h1>Generate My Week</h1>
+
+<button id="generateBtn">Generate Weekly Schedule</button>
+<button id="rebuildBtn" class="glow">Rebuild My Week</button>
+
+<h2>Your Tasks</h2>
+<div id="taskList"></div>
+
+<h2>This Week's Schedule</h2>
+<div id="schedule"></div>
 
 <script>
-document.getElementById("genWeekBtn").addEventListener("click", async () => {
-    const availability = {
-        "Mon": true,
-        "Tue": true,
-        "Wed": true,
-        "Thu": true,
-        "Fri": true,
-        "Sat": false,
-        "Sun": false
-    };
+    async function loadTasks() {
+        const res = await fetch("http://127.0.0.1:5000/get_tasks");
+        const data = await res.json();
 
-    const resp = await fetch("http://127.0.0.1:5000/generate_schedule", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            availability: availability,
-            hours_per_day: 3
-        })
-    });
+        const container = document.getElementById("taskList");
+        container.innerHTML = "";
 
-    const data = await resp.json();
-
-    let div = document.getElementById("output");
-    div.innerHTML = "";
-
-    for (let day in data.schedule) {
-        let section = document.createElement("div");
-        section.innerHTML = `<h3>${day}</h3>`;
-
-        data.schedule[day].forEach(block => {
-            section.innerHTML += `
-                <p>
-                    <b>${block.task}</b><br>
-                    Due: ${block.due_date}<br>
-                    Hours: ${block.allocated}
-                </p>
+        data.tasks.forEach(t => {
+            const div = document.createElement("div");
+            div.innerHTML = `
+                <p><b>${t.task}</b> — Due: ${t.due_date}</p>
+                <button class="missed-btn" data-id="${t.id}">Mark Missed</button>
+                <hr>
             `;
+            container.appendChild(div);
         });
 
-        div.appendChild(section);
-        div.innerHTML += "<hr>";
+        attachMissedListeners();
     }
-});
+
+    function attachMissedListeners() {
+        document.querySelectorAll(".missed-btn").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const id = btn.dataset.id;
+
+                const res = await fetch("http://127.0.0.1:5000/rebuild_week", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ task_id: parseInt(id) })
+                });
+
+                const data = await res.json();
+                alert("Your week has been rebuilt!");
+                displaySchedule(data.schedule);
+            });
+        });
+    }
+
+    // Display schedule in clean weekly format
+    function displaySchedule(schedule) {
+        const container = document.getElementById("schedule");
+        container.innerHTML = "";
+
+        for (const day in schedule) {
+            const div = document.createElement("div");
+            div.className = "day-block";
+
+            let html = `<h3>${day}</h3>`;
+
+            schedule[day].forEach(t => {
+                html += `
+                    <p><b>${t.task}</b><br>
+                    Due: ${t.due_date}<br>
+                    Hours: ${t.hours}</p><hr>
+                `;
+            });
+
+            div.innerHTML = html;
+            container.appendChild(div);
+        }
+    }
+
+    // Generate weekly schedule
+    document.getElementById("generateBtn").addEventListener("click", async () => {
+        const res = await fetch("http://127.0.0.1:5000/generate_schedule", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+        });
+
+        const data = await res.json();
+        displaySchedule(data.schedule);
+    });
+
+    // Global rebuild button
+    document.getElementById("rebuildBtn").addEventListener("click", async () => {
+        const res = await fetch("http://127.0.0.1:5000/rebuild_week", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ task_id: null })
+        });
+
+        const data = await res.json();
+        displaySchedule(data.schedule);
+    });
+
+    // Load tasks on page load
+    loadTasks();
 </script>
+
+</body>
+</html>
+
