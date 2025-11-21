@@ -1,0 +1,51 @@
+<h2>Generate My Week</h2>
+
+<button id="genWeekBtn">Generate Weekly Schedule</button>
+
+<div id="output"></div>
+
+<script>
+document.getElementById("genWeekBtn").addEventListener("click", async () => {
+    const availability = {
+        "Mon": true,
+        "Tue": true,
+        "Wed": true,
+        "Thu": true,
+        "Fri": true,
+        "Sat": false,
+        "Sun": false
+    };
+
+    const resp = await fetch("http://127.0.0.1:5000/generate_schedule", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            availability: availability,
+            hours_per_day: 3
+        })
+    });
+
+    const data = await resp.json();
+
+    let div = document.getElementById("output");
+    div.innerHTML = "";
+
+    for (let day in data.schedule) {
+        let section = document.createElement("div");
+        section.innerHTML = `<h3>${day}</h3>`;
+
+        data.schedule[day].forEach(block => {
+            section.innerHTML += `
+                <p>
+                    <b>${block.task}</b><br>
+                    Due: ${block.due_date}<br>
+                    Hours: ${block.allocated}
+                </p>
+            `;
+        });
+
+        div.appendChild(section);
+        div.innerHTML += "<hr>";
+    }
+});
+</script>

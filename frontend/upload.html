@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Syllabus</title>
+    <meta charset="UTF-8">
+</head>
+
+<body>
+    <h1>Upload Syllabus</h1>
+
+    <!-- Text area -->
+    <textarea id="syllabus" 
+              style="width: 90%; height: 200px;"
+              placeholder="Paste syllabus or assignment text here"></textarea>
+    <br><br>
+
+    <!-- Button -->
+    <button id="extractBtn">Extract Deadlines</button>
+
+    <h2>Extracted Tasks</h2>
+    <div id="taskList"></div>
+
+    <script>
+        document.getElementById("extractBtn").addEventListener("click", async () => {
+            const text = document.getElementById("syllabus").value;
+
+            console.log("Sending:", text); // DEBUG
+
+            const response = await fetch("http://127.0.0.1:5000/extract_deadlines", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ text })
+            });
+
+            const data = await response.json();
+            console.log("Response:", data); // DEBUG
+
+            const list = document.getElementById("taskList");
+            list.innerHTML = ""; // clear previous results
+
+            if (data.tasks && data.tasks.length > 0) {
+                data.tasks.forEach(task => {
+                    const item = document.createElement("div");
+                    item.style.marginBottom = "10px";
+
+                    item.innerHTML = `
+                        <p>
+                            <b>${task.name}</b><br>
+                            Due: ${task.due_date}<br>
+                            Type: ${task.type}<br>
+                            Duration: ${task.duration}
+                        </p>
+                        <hr>
+                    `;
+                    list.appendChild(item);
+                });
+            } else {
+                list.innerHTML = "<p>No tasks found.</p>";
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
